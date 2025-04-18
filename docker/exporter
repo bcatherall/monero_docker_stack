@@ -1,0 +1,10 @@
+FROM golang:bullseye AS build
+
+# Install exporter from Github
+RUN go install github.com/cirocosta/monero-exporter/cmd/monero-exporter@master
+
+# Copy installed binary to fresh image
+FROM debian:12.10
+COPY --from=build /go/bin/monero-exporter /usr/local/bin/monero-exporter
+
+ENTRYPOINT [ "monero-exporter" ]

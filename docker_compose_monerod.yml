@@ -1,0 +1,200 @@
+volumes:
+  grafana:
+  prometheus:
+  bitmonero:
+
+x-log-config: &log-config
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "20"
+
+networks:
+  monero_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.31.255.0/24"
+
+services:
+  prometheus:
+    image: prom/prometheus:${PROM_TAG:-v2.36.0}
+    command:
+      - --config.file=/etc/prometheus/config.yaml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROM_RETENTION:-360d}
+    container_name: monerod_prometheus
+    restart: unless-stopped
+    depends_on:
+      exporter:
+        condition: service_started
+    # ports:
+    #   - 127.0.0.1:9090:9090
+    volumes:
+      - prometheus:/prometheus
+      - ./prometheus/config.yaml:/etc/prometheus/config.yaml:ro
+    networks:
+      - monero_net
+    <<: *log-config
+  grafana:
+    user: "1000"
+    command:
+      - -config=/etc/grafana/grafana.ini
+    container_name: monerod_grafana
+    restart: unless-stopped
+    image: grafana/grafana:${GRAFANA_TAG:-10.1.4}
+    ports:
+      - 127.0.0.1:${GRAF_PORT:-3000}:3000
+    volumes:
+      - grafana:/var/lib/grafana
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      HOSTNAME: grafana
+      GF_SERVER_ROOT_URL: ${GRAFANA_URL}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_ALLOW_ORG_CREATE: "false"
+      GF_LOG_LEVEL: "debug"
+      GF_AUTH_ANONYMOUS_ENABLED: "${GF_AUTH_ANONYMOUS_ENABLED:-true}"
+      GF_AUTH_BASIC_ENABLED: "${GF_AUTH_BASIC_ENABLED:-false}"
+      GF_AUTH_DISABLE_LOGIN_FORM: "${GF_AUTH_DISABLE_LOGIN_FORM:-true}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GF_SECURITY_ADMIN_PASSWORD}"
+      GF_SECURITY_ADMIN_USER: "${GF_SECURITY_ADMIN_USER}"
+    networks:
+      - monero_net
+    <<: *log-config
+  exporter:
+    container_name: monerod_exporter
+    build:
+      context: .
+      dockerfile: docker/exporter
+    restart: unless-stopped
+    depends_on:
+      monerod:
+        condition: service_started
+    # ports:
+    #   - 127.0.0.1:9000:9000
+    command:
+      - --monero-addr=http://monerod:${UNRESTRICTED_PORT:-18083}
+    networks:
+      - monero_net
+    <<: *log-config
+  nodemapper:
+    container_name: monerod_nodemapper
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: docker/nodemapper
+    depends_on:
+      monerod:
+        condition: service_started
+    environment:
+      NODE_HOST: monerod
+      NODE_PORT: 18083
+    # ports:
+    #   - 127.0.0.1:${MAPPER_PORT:-5000}:5000
+    networks:
+      - monero_net
+    <<: *log-config
+  tor:
+    container_name: monerod_tor
+    build:
+      context: .
+      dockerfile: docker/tor
+    restart: unless-stopped
+    # ports:
+      # - 127.0.0.1:9050:9050
+    networks:
+      monero_net:
+        ipv4_address: 172.31.255.250
+    <<: *log-config
+  i2p:
+    container_name: monerod_i2p
+    build:
+      context: .
+      dockerfile: docker/i2p
+    restart: unless-stopped
+    # ports:
+        # - 127.0.0.1:4444:4444
+    networks:
+      monero_net:
+        ipv4_address: 172.31.255.251
+    <<: *log-config
+  monerod:
+    container_name: monerod
+    build:
+      context: .
+      dockerfile: docker/monero
+      args:
+        THREADS: ${THREADS:-2}
+    restart: unless-stopped
+    depends_on:
+      tor:
+        condition: service_started
+      i2p:
+        condition: service_started
+    volumes:
+      - bitmonero:/data
+    ports:
+      - ${P2P_PORT:-18080}:18080                    # p2p
+      - ${RESTRICTED_PORT:-18081}:18081             # restricted rpc
+      - 127.0.0.1:${ZMQ_PORT:-18082}:18082          # zmq
+      - 127.0.0.1:${UNRESTRICTED_PORT:-18083}:18083 # unrestricted rpc
+    command:
+      - monerod
+      - --data-dir=/data
+      - --p2p-bind-ip=0.0.0.0
+      - --p2p-bind-port=18080
+      - --zmq-rpc-bind-ip=0.0.0.0
+      - --zmq-rpc-bind-port=18082
+      - --zmq-pub=tcp://0.0.0.0:18084
+      - --rpc-bind-ip=0.0.0.0
+      - --rpc-bind-port=18083
+      - --rpc-restricted-bind-ip=0.0.0.0
+      - --rpc-restricted-bind-port=18081
+      - --non-interactive
+      - --confirm-external-bind
+      - --public-node
+      - --log-level=0
+      - --max-log-file-size=1048576
+      - --max-log-files=3
+      - --no-igd
+      - --rpc-ssl=disabled
+      - --ban-list=/ban_list.txt
+      - --tx-proxy=tor,172.31.255.250:9050,disable_noise,24
+      - --tx-proxy=i2p,172.31.255.251:4447,disable_noise,24
+      - --check-updates=disabled
+      - --enable-dns-blocklist
+      - --out-peers=32
+      - --in-peers=48
+      - --limit-rate-up=1048576
+      - --limit-rate-down=1048576
+      - --allow-local-ip
+      - --db-sync-mode=fast:async:250000000bytes
+      - --max-txpool-weight=2684354560
+      - --fast-block-sync=1
+      - --restricted-rpc
+    networks:
+      - monero_net
+    <<: *log-config
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: unless-stopped
+    environment:
+      WATCHTOWER_CLEANUP: true
+      WATCHTOWER_POLL_INTERVAL: 3600
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
