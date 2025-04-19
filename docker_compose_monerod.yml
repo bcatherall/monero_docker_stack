@@ -2,6 +2,7 @@ volumes:
   grafana:
   prometheus:
   bitmonero:
+  tor:
 
 x-log-config: &log-config
   logging:
@@ -29,8 +30,8 @@ services:
     depends_on:
       exporter:
         condition: service_started
-    # ports:
-    #   - 127.0.0.1:9090:9090
+    ports:
+      - 127.0.0.1:9090:9090
     volumes:
       - prometheus:/prometheus
       - ./prometheus/config.yaml:/etc/prometheus/config.yaml:ro
@@ -58,7 +59,7 @@ services:
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_USERS_ALLOW_ORG_CREATE: "false"
-      GF_LOG_LEVEL: "debug"
+      GF_LOG_LEVEL: "info"
       GF_AUTH_ANONYMOUS_ENABLED: "${GF_AUTH_ANONYMOUS_ENABLED:-true}"
       GF_AUTH_BASIC_ENABLED: "${GF_AUTH_BASIC_ENABLED:-false}"
       GF_AUTH_DISABLE_LOGIN_FORM: "${GF_AUTH_DISABLE_LOGIN_FORM:-true}"
@@ -76,8 +77,8 @@ services:
     depends_on:
       monerod:
         condition: service_started
-    # ports:
-    #   - 127.0.0.1:9000:9000
+    ports:
+      - 127.0.0.1:9000:9000
     command:
       - --monero-addr=http://monerod:${UNRESTRICTED_PORT:-18083}
     networks:
@@ -95,8 +96,8 @@ services:
     environment:
       NODE_HOST: monerod
       NODE_PORT: 18083
-    # ports:
-    #   - 127.0.0.1:${MAPPER_PORT:-5000}:5000
+    ports:
+      - 127.0.0.1:${MAPPER_PORT:-5000}:5000
     networks:
       - monero_net
     <<: *log-config
@@ -106,8 +107,10 @@ services:
       context: .
       dockerfile: docker/tor
     restart: unless-stopped
-    # ports:
-      # - 127.0.0.1:9050:9050
+    ports:
+      - 127.0.0.1:9050:9050
+    volumes:
+      - tor:/var/lib/tor/monerod
     networks:
       monero_net:
         ipv4_address: 172.31.255.250
@@ -118,8 +121,8 @@ services:
       context: .
       dockerfile: docker/i2p
     restart: unless-stopped
-    # ports:
-        # - 127.0.0.1:4444:4444
+    ports:
+        - 127.0.0.1:4444:4444
     networks:
       monero_net:
         ipv4_address: 172.31.255.251
@@ -139,11 +142,13 @@ services:
         condition: service_started
     volumes:
       - bitmonero:/data
+      - tor:/var/lib/tor/monerod:ro
     ports:
       - ${P2P_PORT:-18080}:18080                    # p2p
       - ${RESTRICTED_PORT:-18081}:18081             # restricted rpc
       - 127.0.0.1:${ZMQ_PORT:-18082}:18082          # zmq
       - 127.0.0.1:${UNRESTRICTED_PORT:-18083}:18083 # unrestricted rpc
+      - 127.0.0.1:${P2P_TOR:-18084}:18084           # tor anon
     command:
       - monerod
       - --data-dir=/data
@@ -151,7 +156,7 @@ services:
       - --p2p-bind-port=18080
       - --zmq-rpc-bind-ip=0.0.0.0
       - --zmq-rpc-bind-port=18082
-      - --zmq-pub=tcp://0.0.0.0:18084
+      - --zmq-pub=tcp://0.0.0.0:18085
       - --rpc-bind-ip=0.0.0.0
       - --rpc-bind-port=18083
       - --rpc-restricted-bind-ip=0.0.0.0
@@ -177,7 +182,6 @@ services:
       - --db-sync-mode=fast:async:250000000bytes
       - --max-txpool-weight=2684354560
       - --fast-block-sync=1
-      - --restricted-rpc
     networks:
       - monero_net
     <<: *log-config
