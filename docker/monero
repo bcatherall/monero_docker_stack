@@ -16,9 +16,8 @@ RUN git clone https://github.com/monero-project/monero --branch=$MONERO_RELEASE 
 # Clone submodules
 RUN git submodule update --init --force
 
-# Compile monero
-ARG THREADS 2
-RUN make -j$THREADS
+# Compile monero with 2 threads
+RUN make -j2
 
 # Download ban list
 RUN wget -qO /tmp/ban_list.txt "https://raw.githubusercontent.com/Boog900/monero-ban-list/main/ban_list.txt"
