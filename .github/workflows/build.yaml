@@ -11,7 +11,7 @@ jobs:
   nodemapper:
     name: Publish nodemapper image
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, 'release(nodemapper)')
+    if: contains(github.event.head_commit.message, 'release')
     steps:
       - name: Authenticate to Dockerhub
         uses: docker/login-action@v3
@@ -34,7 +34,7 @@ jobs:
   monero:
     name: Publish monero image
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, 'release(monero)')
+    if: contains(github.event.head_commit.message, 'release')
     steps:
       - name: Authenticate to Dockerhub
         uses: docker/login-action@v3
@@ -57,7 +57,7 @@ jobs:
   exporter:
     name: Publish exporter image
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, 'release(exporter)')
+    if: contains(github.event.head_commit.message, 'release')
     steps:
       - name: Authenticate to Dockerhub
         uses: docker/login-action@v3
@@ -80,7 +80,7 @@ jobs:
   tor:
     name: Publish tor image
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, 'release(tor)')
+    if: contains(github.event.head_commit.message, 'release')
     steps:
       - name: Authenticate to Dockerhub
         uses: docker/login-action@v3
@@ -103,7 +103,7 @@ jobs:
   i2p:
     name: Publish i2p image
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, 'release(i2p)')
+    if: contains(github.event.head_commit.message, 'release')
     steps:
       - name: Authenticate to Dockerhub
         uses: docker/login-action@v3
