@@ -55,7 +55,7 @@ if [[ "${IMAGE}" == "tor" ]]; then
     docker buildx build --platform linux/amd64,linux/arm64 \
         -t "${TOR_BASE}:${TOR_VERSION}" \
         -t "${TOR_BASE}:latest" \
-        -f dockers/tor . \
+        -f docker/tor . \
         --push
 fi
 
