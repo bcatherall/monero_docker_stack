@@ -2,10 +2,10 @@ name: Publish images to Docker Hub
 
 on:
   push:
-    branches: master
+    branches: main
 
 env:
-  DH_USER: bcatherall
+  DH_USER: bcath
 
 jobs:
   nodemapper:
