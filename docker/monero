@@ -54,6 +54,11 @@ RUN wget -qO /tmp/ban_list.txt "https://raw.githubusercontent.com/Boog900/monero
 
 # Copy to fresh Ubuntu image to reduce size
 FROM debian:12.10
+
+RUN apt-get update \
+  && apt-get upgrade -y \
+  && apt-get install -y tar wget curl bzip2
+
 COPY --from=build /usr/local/bin/monerod /usr/local/bin/monerod
 COPY --from=build /usr/local/bin/monero-wallet-cli /usr/local/bin/monero-wallet-cli
 COPY --from=build /usr/local/bin/monero-wallet-rpc /usr/local/bin/monero-wallet-rpc
