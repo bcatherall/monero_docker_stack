@@ -15,7 +15,7 @@ WORKDIR /opt/monero
 # Update system and install dependencies
 RUN apt-get update \
   && apt-get upgrade -y \
-  && apt-get install -y tar wget bzip2
+  && apt-get install -y tar wget curl bzip2
 
 # Download Monero binaries from getmonero.org
 # Confirm hashes match
