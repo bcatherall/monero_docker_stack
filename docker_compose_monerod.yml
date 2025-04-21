@@ -34,7 +34,7 @@ services:
       - 127.0.0.1:9090:9090
     volumes:
       - prometheus:/prometheus
-      - ./prometheus/config.yaml:/etc/prometheus/config.yaml:ro
+      - ./config/prometheus/config.yaml:/etc/prometheus/config.yaml:ro
     networks:
       - monero_net
     <<: *log-config
@@ -49,9 +49,9 @@ services:
       - 127.0.0.1:${GRAF_PORT:-3000}:3000
     volumes:
       - grafana:/var/lib/grafana
-      - ./grafana/grafana.ini:/etc/grafana/grafana.ini:ro
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./config/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
     environment:
       HOSTNAME: grafana
       GF_SERVER_ROOT_URL: ${GRAFANA_URL}

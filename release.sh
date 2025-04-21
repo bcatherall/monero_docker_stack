@@ -11,7 +11,7 @@
 set -ex
 
 IMAGE=${1}
-DH_USER=${2:-lalanza808}
+DH_USER=${2:-bcath}
 MONERO_VERSION=v0.18.4.0
 MONERO_BASE=${DH_USER}/monero
 EXPORTER_VERSION=1.0.0
@@ -22,6 +22,10 @@ TOR_VERSION=1.0.1
 TOR_BASE=${DH_USER}/tor
 I2P_VERSION=1.0.0
 I2P_BASE=${DH_USER}/i2p
+PROMETHEUS_VERSION=2.36.0
+PROMETHEUS_BASE=${DH_USER}/prometheus
+GRAPHANA_VERSION=10.1.4
+GRAPHANA_BASE=${DH_USER}/graphana
 
 if [[ "${IMAGE}" == "nodemapper" ]]; then
     echo -e "[+] Building nodemapper multi-arch (amd64 & arm64)"
@@ -65,5 +69,23 @@ if [[ "${IMAGE}" == "i2p" ]]; then
         -t "${I2P_BASE}:${I2P_VERSION}" \
         -t "${I2P_BASE}:latest" \
         -f docker/i2p . \
+        --push
+fi
+
+if [[ "${IMAGE}" == "prometheus" ]]; then
+    echo -e "[+] Building prometheus multi-arch (amd64 & arm64)"
+    docker buildx build --platform linux/amd64,linux/arm64 \
+        -t "${PROMETHEUS_BASE}:${PROMETHEUS_VERSION}" \
+        -t "${PROMETHEUS_BASE}:latest" \
+        -f docker/prometheus . \
+        --push
+fi
+
+if [[ "${IMAGE}" == "graphana" ]]; then
+    echo -e "[+] Building graphana multi-arch (amd64 & arm64)"
+    docker buildx build --platform linux/amd64,linux/arm64 \
+        -t "${GRAPHANA_BASE}:${GRAPHANA_VERSION}" \
+        -t "${GRAPHANA_BASE}:latest" \
+        -f docker/graphana . \
         --push
 fi
