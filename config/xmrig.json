@@ -1,0 +1,23 @@
+{
+    "autosave": true,
+    "opencl": false,
+    "cuda": false,
+    "pools": [
+        {
+            "url": "10.10.200.100:3333",
+            "user": "43CY9S5WVDN3pNLDWTid73Kv3Lu1zQNS7ULZdunvjKVXYXhQ7RSQ1DDJDq24ChmqX3e33bWpiGHVuBB4AyNW4bebLxZ5Qo2",
+        }
+    ],
+    "http": {
+        "enabled": false,
+        "host": "127.0.0.1",
+        "port": 0,
+        "access-token": null,
+        "restricted": true
+    },
+    "cpu": {
+        "enabled": true,
+        "huge-pages": true,
+        "huge-pages-jit": false
+    }
+}

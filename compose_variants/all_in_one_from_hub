@@ -1,0 +1,221 @@
+name: monero
+volumes:
+  grafana: {}
+  prometheus: {}
+  bitmonero: {}
+  tor: {}
+  p2pool-data: {}
+x-log-config: &a1
+  logging:
+    driver: json-file
+    options:
+      max-size: 50m
+      max-file: "20"
+networks:
+  monero_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.255.0/24
+services:
+  prometheus:
+    image: bcath/prometheus:latest
+    command:
+      - --config.file=/etc/prometheus/config.yaml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROM_RETENTION:-360d}
+    container_name: monerod_prometheus
+    restart: unless-stopped
+    depends_on:
+      exporter:
+        condition: service_started
+    ports:
+      - 127.0.0.1:9090:9090
+    volumes:
+      - prometheus:/prometheus
+    networks:
+      - monero_net
+    <<: *a1
+  grafana:
+    user: "1000"
+    command:
+      - -config=/etc/grafana/grafana.ini
+    container_name: monerod_grafana
+    restart: unless-stopped
+    image: bcath/graphana:latest
+    ports:
+      - 127.0.0.1:${GRAF_PORT:-3000}:3000
+    volumes:
+      - grafana:/var/lib/grafana
+    environment:
+      HOSTNAME: grafana
+      GF_SERVER_ROOT_URL: ${GRAFANA_URL}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_ALLOW_ORG_CREATE: "false"
+      GF_LOG_LEVEL: "info"
+      GF_AUTH_ANONYMOUS_ENABLED: "${GF_AUTH_ANONYMOUS_ENABLED:-true}"
+      GF_AUTH_BASIC_ENABLED: "${GF_AUTH_BASIC_ENABLED:-false}"
+      GF_AUTH_DISABLE_LOGIN_FORM: "${GF_AUTH_DISABLE_LOGIN_FORM:-true}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GF_SECURITY_ADMIN_PASSWORD}"
+      GF_SECURITY_ADMIN_USER: "${GF_SECURITY_ADMIN_USER}"
+    networks:
+      - monero_net
+    <<: *a1
+  exporter:
+    container_name: monerod_exporter
+    image: bcath/exporter:latest
+    restart: unless-stopped
+    depends_on:
+      monerod:
+        condition: service_started
+    ports:
+      - 127.0.0.1:9000:9000
+    command:
+      - --monero-addr=http://monerod:${UNRESTRICTED_PORT:-18083}
+    networks:
+      - monero_net
+    <<: *a1
+  nodemapper:
+    container_name: monerod_nodemapper
+    restart: unless-stopped
+    image: bcath/nodemapper:latest
+    depends_on:
+      monerod:
+        condition: service_started
+    environment:
+      NODE_HOST: monerod
+      NODE_PORT: 18083
+    ports:
+      - 127.0.0.1:${MAPPER_PORT:-5000}:5000
+    networks:
+      - monero_net
+    <<: *a1
+  tor:
+    container_name: monerod_tor
+    image: bcath/tor:latest
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:9050:9050
+    volumes:
+      - tor:/var/lib/tor/monerod
+    networks:
+      monero_net:
+        ipv4_address: 172.31.255.250
+    <<: *a1
+  i2p:
+    container_name: monerod_i2p
+    image: bcath/i2p:latest
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:4444:4444
+    networks:
+      monero_net:
+        ipv4_address: 172.31.255.251
+    <<: *a1
+  monerod:
+    container_name: monerod
+    image: bcath/monero:latest
+    restart: unless-stopped
+    healthcheck:
+      test: curl --fail http://monerod:${UNRESTRICTED_PORT:-18083}/get_height || exit
+        1
+      interval: 60s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    depends_on:
+      tor:
+        condition: service_started
+      i2p:
+        condition: service_started
+    volumes:
+      - bitmonero:/data
+      - tor:/var/lib/tor/monerod:ro
+    ports:
+      - ${P2P_PORT:-18080}:18080
+      - ${RESTRICTED_PORT:-18081}:18081
+      - 127.0.0.1:${ZMQ_PORT:-18082}:18082
+      - 127.0.0.1:${UNRESTRICTED_PORT:-18083}:18083
+      - 127.0.0.1:${P2P_TOR:-18084}:18084
+    command:
+      - monerod
+      - --data-dir=/data
+      - --p2p-bind-ip=0.0.0.0
+      - --p2p-bind-port=18080
+      - --zmq-rpc-bind-ip=0.0.0.0
+      - --zmq-rpc-bind-port=18082
+      - --zmq-pub=tcp://0.0.0.0:18085
+      - --rpc-bind-ip=0.0.0.0
+      - --rpc-bind-port=18083
+      - --rpc-restricted-bind-ip=0.0.0.0
+      - --rpc-restricted-bind-port=18081
+      - --non-interactive
+      - --confirm-external-bind
+      - --public-node
+      - --log-level=0
+      - --max-log-file-size=1048576
+      - --max-log-files=3
+      - --no-igd
+      - --rpc-ssl=disabled
+      - --ban-list=/ban_list.txt
+      - --tx-proxy=tor,172.31.255.250:9050,disable_noise,24
+      - --tx-proxy=i2p,172.31.255.251:4447,disable_noise,24
+      - --check-updates=disabled
+      - --enable-dns-blocklist
+      - --out-peers=32
+      - --in-peers=48
+      - --limit-rate-up=1048576
+      - --limit-rate-down=1048576
+      - --allow-local-ip
+      - --db-sync-mode=fast:async:250000000bytes
+      - --max-txpool-weight=2684354560
+      - --fast-block-sync=1
+    networks:
+      monero_net:
+        ipv4_address: 172.31.255.253
+    <<: *a1
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: unless-stopped
+    environment:
+      WATCHTOWER_CLEANUP: true
+      WATCHTOWER_POLL_INTERVAL: 3600
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  p2pool-mini:
+    image: ghcr.io/sethforprivacy/p2pool:latest
+    restart: unless-stopped
+    container_name: p2pool-mini
+    tty: true
+    stdin_open: true
+    volumes:
+      - p2pool-data:/home/p2pool
+      - /dev/null:/home/p2pool/.p2pool/p2pool.log:rw
+      - /dev/hugepages:/dev/hugepages:rw
+    ports:
+      - 3333:3333
+      - 37888:37888
+    networks:
+      monero_net:
+        ipv4_address: 172.31.255.252
+        aliases:
+          - p2pool-mini
+    depends_on:
+      monerod:
+        condition: service_healthy
+    command: --wallet
+      43CY9S5WVDN3pNLDWTid73Kv3Lu1zQNS7ULZdunvjKVXYXhQ7RSQ1DDJDq24ChmqX3e33bWpiGHVuBB4AyNW4bebLxZ5Qo2
+      --stratum 0.0.0.0:3333 --p2p 0.0.0.0:37888 --rpc-port 18081 --zmq-port
+      18082 --host 172.31.255.253 --no-dns --mini
+    <<: *a1

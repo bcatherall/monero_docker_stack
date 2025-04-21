@@ -1,0 +1,56 @@
+FROM debian:12.10 as build
+ARG XMRIG_VERSION=6.22.0
+
+RUN set -xe; \
+  apt-get update; \
+  apt-get install -y wget build-essential cmake automake libtool autoconf; \
+  apt-get install -y gcc-9 g++-9; \
+  update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 100; \
+  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 100; \
+  rm -rf /var/lib/apt/lists/*; \
+  wget https://github.com/xmrig/xmrig/archive/refs/tags/v${XMRIG_VERSION}.tar.gz; \
+  tar xf v${XMRIG_VERSION}.tar.gz; \
+  mv xmrig-${XMRIG_VERSION} /xmrig; \
+  cd /xmrig; \
+  mkdir build; \
+  cd scripts; \
+  ./build_deps.sh; \
+  cd ../build; \
+  cmake .. -DXMRIG_DEPS=scripts/deps; \
+  make -j $(nproc);
+
+RUN set -xe; \
+  cd /xmrig; \
+  cp build/xmrig /xmrig
+
+
+FROM debian:12.10 as runner
+RUN set -xe; \
+  mkdir /xmrig; \
+  apt-get update; \
+  apt-get -y install jq; \
+  apt-get -y install libnvrtc11.2; \
+  rm -rf /var/lib/apt/lists/*
+COPY --from=build /xmrig/xmrig /xmrig/xmrig
+COPY --from=build /xmrig/src/config.json /xmrig/config.json
+
+
+ENV POOL_USER="44vjAVKLTFc7jxTv5ij1ifCv2YCFe3bpTgcRyR6uKg84iyFhrCesstmWNUppRCrxCsMorTP8QKxMrD3QfgQ41zsqMgPaXY5" \
+  POOL_PASS="" \
+  POOL_URL="xmr.metal3d.org:8080" \
+  DONATE_LEVEL=5 \
+  PRIORITY=0 \
+  THREADS=0 \
+  PATH="/xmrig:${PATH}" \
+  CUDA=false \
+  CUDA_BF="" \
+  ALGO="" \
+  COIN="" \
+  THREAD_DIVISOR="2"
+
+WORKDIR /xmrig
+COPY config/xmrig_entrypoint.sh /entrypoint.sh
+WORKDIR /tmp
+EXPOSE 3000
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["xmrig"]
