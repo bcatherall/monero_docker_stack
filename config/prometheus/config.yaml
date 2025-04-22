@@ -7,7 +7,7 @@ scrape_configs:
     static_configs:
       - targets: ["exporter:9000"]
   - job_name: "nodemapper"
-    scrape_interval: 2m
-    scrape_timeout: 1m
+    scrape_interval: 10m
+    scrape_timeout: 5m
     static_configs:
       - targets: ["nodemapper:5000"]
