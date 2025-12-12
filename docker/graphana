@@ -1,4 +1,4 @@
-FROM grafana/grafana:10.1.4
+FROM grafana/grafana:latest
 
 COPY config/grafana/grafana.ini /etc/grafana/grafana.ini
 COPY config/grafana/provisioning /etc/grafana/provisioning
