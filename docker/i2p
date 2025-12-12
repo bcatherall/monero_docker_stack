@@ -15,7 +15,7 @@ RUN set -ex; \
          echo "Unsupported architecture: $arch" && exit 1; \
     fi; \
     echo "Using architecture: $ARCH"; \
-    wget "https://github.com/PurpleI2P/i2pd/releases/download/2.54.0/i2pd_2.54.0-1jammy1_${ARCH}.deb" -O i2pd.deb -q && \
+    wget "https://github.com/PurpleI2P/i2pd/releases/download/2.58.0/i2pd_2.58.0-1trixie1_${ARCH}.deb" -O i2pd.deb -q && \
     apt install ./i2pd.deb -y && \
     rm -rf i2pd.deb && \
     apt clean all && \
