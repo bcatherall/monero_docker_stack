@@ -1,4 +1,4 @@
-FROM debian:12.10 as build
+FROM debian:stable as build
 ARG XMRIG_VERSION=6.22.0
 
 RUN set -xe; \
@@ -24,7 +24,7 @@ RUN set -xe; \
   cp build/xmrig /xmrig
 
 
-FROM debian:12.10 as runner
+FROM debian:stable as runner
 RUN set -xe; \
   mkdir /xmrig; \
   apt-get update; \
