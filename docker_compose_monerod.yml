@@ -20,7 +20,7 @@ networks:
 
 services:
   prometheus:
-    image: prom/prometheus:${PROM_TAG:-v2.36.0}
+    image: prom/prometheus:latest
     command:
       - --config.file=/etc/prometheus/config.yaml
       - --storage.tsdb.path=/prometheus
@@ -44,7 +44,7 @@ services:
       - -config=/etc/grafana/grafana.ini
     container_name: monerod_grafana
     restart: unless-stopped
-    image: grafana/grafana:${GRAFANA_TAG:-10.1.4}
+    image: grafana/grafana:latest
     ports:
       - 127.0.0.1:${GRAF_PORT:-3000}:3000
     volumes:
