@@ -1,4 +1,4 @@
-FROM debian:12.10 AS build
+FROM debian:stable AS build
 
 # Define the Monero version
 ENV MONERO_VERSION=0.18.4.4
@@ -53,7 +53,7 @@ RUN \
 RUN wget -qO /tmp/ban_list.txt "https://raw.githubusercontent.com/Boog900/monero-ban-list/main/ban_list.txt"
 
 # Copy to fresh Ubuntu image to reduce size
-FROM debian:12.10
+FROM debian:stable
 
 RUN apt-get update \
   && apt-get upgrade -y \
